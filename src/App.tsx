@@ -94,18 +94,9 @@ function App() {
           path="/experience/:id"
           element={user ? <ExperiencePage experiences={experiences} user={user} onUpdate={updateUser} /> : <Navigate to="/auth" replace />}
         />
-        <Route
-          path="/ai"
-          element={user ? <AiPage user={user} /> : <Navigate to="/auth" replace />}
-        />
-        <Route
-          path="/profile"
-          element={user ? <ProfilePage user={user} /> : <Navigate to="/auth" replace />}
-        />
-        <Route
-          path="/wallet"
-          element={user ? <WalletPage user={user} /> : <Navigate to="/auth" replace />}
-        />
+        <Route path="/ai" element={user ? <AiPage user={user} /> : <Navigate to="/auth" replace />} />
+        <Route path="/profile" element={user ? <ProfilePage user={user} /> : <Navigate to="/auth" replace />} />
+        <Route path="/wallet" element={user ? <WalletPage user={user} /> : <Navigate to="/auth" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
@@ -143,10 +134,45 @@ function Header({ user, onLogout }: { user: User | null; onLogout: () => void })
   );
 }
 
+function MapWorld({ selectedState, onSelect }: { selectedState?: string; onSelect?: (state: string) => void }) {
+  return (
+    <div className="nigeria-map">
+      <div className="map-glow" />
+      <div className="map-skyline" />
+      {FEATURED_STATES.map((state, index) => {
+        const positions = [
+          { top: '18%', left: '39%' },
+          { top: '22%', left: '66%' },
+          { top: '42%', left: '56%' },
+          { top: '48%', left: '25%' },
+          { top: '58%', left: '48%' },
+          { top: '62%', left: '72%' },
+          { top: '72%', left: '37%' },
+        ];
+        const position = positions[index] ?? { top: '50%', left: '50%' };
+        const isSelected = selectedState === state;
+
+        return (
+          <button
+            key={state}
+            type="button"
+            className={isSelected ? 'map-state selected' : 'map-state'}
+            style={{ top: position.top, left: position.left }}
+            onClick={() => onSelect?.(state)}
+          >
+            {state}
+          </button>
+        );
+      })}
+      <div className="world-caption">Nigeria</div>
+    </div>
+  );
+}
+
 function LandingPage({ user }: { user: User | null }) {
   return (
-    <main className="page hero-page">
-      <section className="hero">
+    <main className="page home-page">
+      <section className="hero-panel">
         <div className="hero-copy">
           <span className="eyebrow">Nigeria is closer than you think.</span>
           <h1>Explore the living pulse of Nigeria through AI-powered adventures.</h1>
@@ -165,7 +191,7 @@ function LandingPage({ user }: { user: User | null }) {
               </Link>
             )}
             <Link className="secondary-btn" to="/explore">
-              See experiences
+              Explore world
             </Link>
           </div>
           <ul className="quick-stats">
@@ -183,18 +209,11 @@ function LandingPage({ user }: { user: User | null }) {
             </li>
           </ul>
         </div>
+
         <div className="hero-visual">
-          <div className="map-card">
-            <div className="map-grid">
-              {FEATURED_STATES.map((state) => (
-                <span key={state} className="state-dot">
-                  {state}
-                </span>
-              ))}
-            </div>
-            <div className="floating-card card-one">Yankari Game Reserve</div>
-            <div className="floating-card card-two">Osun-Osogbo Festival</div>
-          </div>
+          <MapWorld />
+          <div className="floating-card floating-left">Yankari Game Reserve</div>
+          <div className="floating-card floating-right">Osun-Osogbo Festival</div>
         </div>
       </section>
 
@@ -210,7 +229,7 @@ function LandingPage({ user }: { user: User | null }) {
           <p>Every itinerary is tied to cultural information, local context and rich media.</p>
         </article>
         <article className="feature-card">
-          <span>Social Exploration</span>
+          <span>World Social</span>
           <h3>Meet fellow explorers and share discoveries</h3>
           <p>Build missions, complete challenges and invite friends into the same world.</p>
         </article>
@@ -349,13 +368,22 @@ function OnboardingPage({ user, onUpdate }: { user: User; onUpdate: (user: User)
 
   return (
     <main className="page onboarding-page">
-      <section className="panel">
+      <section className="panel onboarding-panel">
         <div className="panel-heading">
           <span className="eyebrow">Personalise your world</span>
           <h2>Set up your explorer identity</h2>
         </div>
 
         <form className="onboarding-form" onSubmit={handleSubmit}>
+          <div className="avatar-preview">
+            <div className="avatar-bubble">{form.avatar.slice(0, 1).toUpperCase()}</div>
+            <div>
+              <p className="muted-label">Explorer preview</p>
+              <strong>{form.avatar || 'Akin'}</strong>
+              <span>{form.outfit}</span>
+            </div>
+          </div>
+
           <div className="field-grid">
             <label>
               Avatar name
@@ -417,10 +445,18 @@ function OnboardingPage({ user, onUpdate }: { user: User; onUpdate: (user: User)
 
 function ExplorePage({ experiences, user, onUpdate }: { experiences: Experience[]; user: User; onUpdate: (user: User) => void }) {
   const [category, setCategory] = useState('All');
+  const [selectedState, setSelectedState] = useState(FEATURED_STATES[0]);
+
   const filtered = useMemo(() => {
-    if (category === 'All') return experiences;
-    return experiences.filter((item) => item.category === category);
-  }, [category, experiences]);
+    let list = experiences;
+    if (selectedState !== 'All') {
+      list = list.filter((item) => item.state === selectedState);
+    }
+    if (category !== 'All') {
+      list = list.filter((item) => item.category === category);
+    }
+    return list;
+  }, [category, selectedState, experiences]);
 
   useEffect(() => {
     request<User>(`/api/user/${user.id}`)
@@ -430,24 +466,33 @@ function ExplorePage({ experiences, user, onUpdate }: { experiences: Experience[
 
   return (
     <main className="page explore-page">
-      <section className="panel map-panel">
+      <section className="panel world-panel">
         <div className="panel-heading split-heading">
           <div>
-            <span className="eyebrow">Interactive map</span>
-            <h2>Explore Nigeria</h2>
+            <span className="eyebrow">World exploration</span>
+            <h2>Enter the Nigerian world</h2>
           </div>
           <div className="wallet-chip">Coins: {user.coins}</div>
         </div>
 
-        <div className="map-layout">
-          <div className="state-menu">
-            {FEATURED_STATES.map((state) => (
-              <button key={state} type="button" className="state-button">
-                {state}
-              </button>
-            ))}
+        <div className="explore-shell">
+          <div className="world-map-panel">
+            <MapWorld selectedState={selectedState} onSelect={setSelectedState} />
+            <div className="state-list">
+              {['All', ...FEATURED_STATES].map((state) => (
+                <button
+                  key={state}
+                  type="button"
+                  className={selectedState === state ? 'state-button active' : 'state-button'}
+                  onClick={() => setSelectedState(state)}
+                >
+                  {state}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="catalog">
+
+          <div className="catalog-panel">
             <div className="filters">
               <button type="button" className={category === 'All' ? 'filter active' : 'filter'} onClick={() => setCategory('All')}>
                 All
@@ -465,20 +510,27 @@ function ExplorePage({ experiences, user, onUpdate }: { experiences: Experience[
             </div>
 
             <div className="experience-list">
-              {filtered.map((experience) => (
-                <Link className="experience-card" key={experience.id} to={`/experience/${experience.id}`}>
-                  <div className="card-topline">
-                    <span className="badge">{experience.badge}</span>
-                    <span className="mini-meta">{experience.state}</span>
-                  </div>
-                  <h3>{experience.name}</h3>
-                  <p>{experience.description}</p>
-                  <div className="card-foot">
-                    <span>{experience.duration}</span>
-                    <span>{experience.mediaLabel}</span>
-                  </div>
-                </Link>
-              ))}
+              {filtered.length === 0 ? (
+                <div className="empty-state">No destinations match this state and category yet.</div>
+              ) : (
+                filtered.map((experience) => (
+                  <Link className="experience-card" key={experience.id} to={`/experience/${experience.id}`}>
+                    <div className="card-media" />
+                    <div className="card-content">
+                      <div className="card-topline">
+                        <span className="badge">{experience.badge}</span>
+                        <span className="mini-meta">{experience.state}</span>
+                      </div>
+                      <h3>{experience.name}</h3>
+                      <p>{experience.description}</p>
+                      <div className="card-foot">
+                        <span>{experience.duration}</span>
+                        <span>{experience.mediaLabel}</span>
+                      </div>
+                    </div>
+                  </Link>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -536,7 +588,7 @@ function ExperiencePage({
         </div>
 
         <div className="detail-grid">
-          <div className="detail-card">
+          <div className="detail-card feature-card-detail">
             <h3>Experience overview</h3>
             <p>{experience.description}</p>
             <ul>
@@ -544,9 +596,14 @@ function ExperiencePage({
               <li>Location: {experience.location}</li>
               <li>Vibe: {experience.vibe}</li>
             </ul>
-            <button className="primary-btn" type="button" onClick={handleComplete}>
-              Complete +45 coins
-            </button>
+            <div className="inline-actions">
+              <button className="primary-btn" type="button" onClick={handleComplete}>
+                Complete +45 coins
+              </button>
+              <Link className="secondary-btn" to="/explore">
+                Back to map
+              </Link>
+            </div>
           </div>
 
           <div className="detail-card">
@@ -555,6 +612,11 @@ function ExperiencePage({
               “{experience.name} blends {experience.vibe.toLowerCase()} with deep cultural context and local discovery. Start with the best
               viewing points around {experience.location}.”
             </p>
+            <div className="source-badges">
+              <span>Verified culture</span>
+              <span>Local story</span>
+              <span>{experience.mediaLabel}</span>
+            </div>
           </div>
         </div>
       </section>
@@ -584,7 +646,7 @@ function AiPage({ user }: { user: User }) {
 
   return (
     <main className="page ai-page">
-      <section className="panel">
+      <section className="panel ai-panel">
         <div className="panel-heading">
           <span className="eyebrow">AI discoverer</span>
           <h2>Ask NAIJA360 where to begin</h2>
@@ -662,7 +724,7 @@ function WalletPage({ user }: { user: User }) {
 
   return (
     <main className="page wallet-page">
-      <section className="panel">
+      <section className="panel wallet-panel">
         <div className="panel-heading split-heading">
           <div>
             <span className="eyebrow">Coin wallet</span>
